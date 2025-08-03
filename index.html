@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Coverage Path Planning with CesiumJS</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link rel="stylesheet" href="ui/styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Top navigation bar -->
+    <div id="topBar">
+        <div class="logo">
+            <i class="fas fa-drone"></i>
+            <span>Aerial System</span>
+        </div>
+        <div class="status">
+            <div class="datetime"><span id="current-datetime">Mar 1, 2025 16:43:03</span></div>
+            <div class="connection-status"><i class="fas fa-circle status-icon online"></i> <span id="status-text">Online</span></div>
+        </div>
+    </div>
+
+    <!-- Main content area with sidebars -->
+    <div id="mainContainer">
+        <!-- Left sidebar -->
+        <div id="leftSidebar">
+            <div class="sidebar-icon active" data-target="missionManagement" title="Mission Planning">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <div class="sidebar-icon" data-target="controls" title="Coverage Path Planning">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <div class="sidebar-icon" data-target="telemetry" title="Telemetry">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="sidebar-icon" data-target="simulationControls" title="Simulation">
+                <i class="fas fa-play-circle"></i>
+            </div>
+            <div class="sidebar-icon" title="Settings">
+                <i class="fas fa-sliders-h"></i>
+            </div>
+        </div>
+
+        <!-- Main content - Cesium map -->
+        <div id="mainContent">
+            <div id="cesiumContainer"></div>
+            
+            <!-- Drawing tools floating panel -->
+            <div id="drawingTools">
+                <div class="drawing-tool-header">
+                    <h4>Drawing Tools</h4>
+                    <button id="toggleDrawingTools" class="tool-toggle" title="Collapse">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+                <div class="drawing-tools-content">
+                    <div class="tool-group">
+                        <button id="editPath" class="drawing-tool" title="Edit Path">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button id="addWaypoint" class="drawing-tool" title="Add Waypoint">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                        <button id="removeWaypoint" class="drawing-tool" title="Remove Waypoint">
+                            <i class="fas fa-minus-circle"></i>
+                        </button>
+                    </div>
+                    <div class="tool-group">
+                        <button id="addMarker" class="drawing-tool" title="Add Marker">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </button>
+                        <button id="addText" class="drawing-tool" title="Add Text Label">
+                            <i class="fas fa-font"></i>
+                        </button>
+                        <button id="measureDistance" class="drawing-tool" title="Measure Distance">
+                            <i class="fas fa-ruler"></i>
+                        </button>
+                    </div>
+                    <div class="tool-group">
+                        <button id="drawRectangle" class="drawing-tool" title="Draw Rectangle">
+                            <i class="fas fa-square"></i>
+                        </button>
+                        <button id="drawCircle" class="drawing-tool" title="Draw Circle">
+                            <i class="fas fa-circle"></i>
+                        </button>
+                        <button id="drawLine" class="drawing-tool" title="Draw Line">
+                            <i class="fas fa-slash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Camera control floating panel -->
+            <div id="cameraControls">
+                <div class="camera-header">
+                    <h4>Camera View</h4>
+                </div>
+                <div class="camera-content">
+                    <select id="cameraMode">
+                        <option value="free">Free Camera</option>
+                        <option value="overview">Mission Overview</option>
+                        <option value="drone">Drone View (1st Person)</option>
+                        <option value="follow">Follow Drone (3rd Person)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right sidebar -->
+        <div id="rightSidebar">
+            <!-- Mission management panel -->
+            <div id="missionManagement" class="sidebar-panel active">
+                <h3>Mission Management</h3>
+                <div class="control-group">
+                    <label for="missionName">Mission Name:</label>
+                    <input type="text" id="missionName" value="Untitled Mission">
+                </div>
+                <div class="button-group">
+                    <button id="saveMission"><i class="fas fa-save"></i> Save Mission</button>
+                    <button id="loadMission"><i class="fas fa-folder-open"></i> Load Mission</button>
+                </div>
+                <div class="control-group">
+                    <label for="missionSelect">Saved Missions:</label>
+                    <select id="missionSelect">
+                        <option value="">Select a mission...</option>
+                    </select>
+                </div>
+            </div>
+        
+            <div id="controls" class="sidebar-panel">
+                <h3>Coverage Path Planning</h3>
+                <div class="control-group">
+                    <label for="altitude">Altitude (m):</label>
+                    <input type="number" id="altitude" value="100" min="10" max="1000">
+                </div>
+                <div class="control-group">
+                    <label for="lineSpacing">Line Spacing (m):</label>
+                    <input type="number" id="lineSpacing" value="50" min="5" max="500">
+                </div>
+                <div class="control-group">
+                    <label for="followTerrain">
+                        <input type="checkbox" id="followTerrain" checked>
+                        Follow Terrain
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label for="smoothPath">
+                        <input type="checkbox" id="smoothPath" checked>
+                        Smooth Path Edges
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label for="smoothingFactor">Smoothing Intensity:</label>
+                    <input type="range" id="smoothingFactor" value="5" min="0" max="10" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="visualizeHeight">
+                        <input type="checkbox" id="visualizeHeight">
+                        Visualize Height
+                    </label>
+                </div>
+                <div class="button-group">
+                    <button id="drawPolygon">Draw Polygon</button>
+                    <button id="generatePath" disabled>Generate Path</button>
+                    <button id="clearAll">Clear All</button>
+                </div>
+                <div class="button-group">
+                    <button id="exportGeoJSON" disabled><i class="fas fa-download"></i> Export GeoJSON</button>
+                    <button id="exportJSON" disabled><i class="fas fa-download"></i> Export JSON</button>
+                </div>
+                <div id="instructions">
+                    Click "Draw Polygon" then click on the map to define your area of interest.
+                </div>
+            </div>
+
+            <!-- Simulation Controls -->
+            <div id="simulationControls" class="sidebar-panel">
+                <h3>Simulation</h3>
+                <div class="simulation-status">
+                    Status: <span id="simulationStatus" class="inactive">INACTIVE</span>
+                </div>
+                <div class="button-group">
+                    <button id="startSimulation"><i class="fas fa-play"></i> Start Simulation</button>
+                    <button id="stopSimulation" disabled><i class="fas fa-stop"></i> Stop Simulation</button>
+                </div>
+                <div class="simulation-progress">
+                    <div class="progress-item">
+                        <span class="label">Waypoint:</span>
+                        <span class="value" id="current-waypoint">0/0</span>
+                    </div>
+                    <div class="progress-item">
+                        <span class="label">Progress:</span>
+                        <span class="value" id="mission-progress">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div id="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="telemetry" class="sidebar-panel">
+                <h3>Mission Status</h3>
+                <div class="telemetry-item">
+                    <span class="label">Waypoints:</span>
+                    <span class="value" id="waypoint-count">0</span>
+                </div>
+                <div class="telemetry-item">
+                    <span class="label">Path Length:</span>
+                    <span class="value" id="path-length">0 km</span>
+                </div>
+                <div class="telemetry-item">
+                    <span class="label">Est. Time:</span>
+                    <span class="value" id="est-time">0 min</span>
+                </div>
+                <div class="telemetry-item">
+                    <span class="label">Area Coverage:</span>
+                    <span class="value" id="area-coverage">0 km²</span>
+                </div>
+            </div>
+
+            <!-- Path editor panel (initially hidden) -->
+            <div id="pathEditor" class="hidden sidebar-panel">
+                <h3>Path Editor</h3>
+                <div class="waypoint-list-container">
+                    <div class="waypoint-list-header">
+                        <span>Waypoints</span>
+                        <div class="waypoint-actions">
+                            <button id="optimizeWaypoints" title="Optimize Path" class="small-button">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <button id="reverseWaypoints" title="Reverse Path" class="small-button">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="waypoint-list" id="waypointList">
+                        <!-- Waypoints will be populated dynamically -->
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button id="savePathChanges">Save Changes</button>
+                    <button id="cancelPathEdit">Cancel</button>
+                </div>
+            </div>
+            
+            <!-- Text label editor (initially hidden) -->
+            <div id="textEditor" class="hidden sidebar-panel">
+                <h3>Add Text Label</h3>
+                <div class="control-group">
+                    <label for="labelText">Text:</label>
+                    <input type="text" id="labelText" placeholder="Enter text...">
+                </div>
+                <div class="control-group">
+                    <label for="labelSize">Size:</label>
+                    <input type="range" id="labelSize" min="10" max="50" value="20" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="labelColor">Color:</label>
+                    <input type="color" id="labelColor" value="#00b3ff">
+                </div>
+                <div class="button-group">
+                    <button id="applyTextLabel">Apply</button>
+                    <button id="cancelTextLabel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="ui/path-algorithms.js"></script>
+    <script src="ui/controls.js"></script>
+    <script src="ui/drawing-tools.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 

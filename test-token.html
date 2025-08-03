@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cesium Token Test</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+    <div id="cesiumContainer" style="width: 100%; height: 400px;"></div>
+    <div id="status" style="padding: 20px; font-family: Arial, sans-serif;"></div>
+    
+    <script>
+        // Your current token
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxMDQ4NTQxZC1iYTdhLTQwMzAtOWQxMS1jYTU0YjY3ZDNhZTgiLCJpZCI6MjcxMjA5LCJpYXQiOjE3NTMzNzQ4NTV9.Q5xerWBCH6ggHU9p-U4CdIBJCHtrT5vwXVLRqGqS_1Y';
+        
+        // Set the token
+        Cesium.Ion.defaultAccessToken = token;
+        
+        const statusDiv = document.getElementById('status');
+        
+        try {
+            // Try to create a viewer
+            const viewer = new Cesium.Viewer('cesiumContainer', {
+                baseLayerPicker: false,
+                timeline: false,
+                animation: false
+            });
+            
+            statusDiv.innerHTML = '<h3 style="color: green;">✅ Token is working!</h3><p>The Cesium viewer loaded successfully.</p>';
+            
+            // Test terrain access
+            viewer.scene.globe.enableLighting = true;
+            
+        } catch (error) {
+            statusDiv.innerHTML = `<h3 style="color: red;">❌ Token Error</h3><p>Error: ${error.message}</p><p>Please check your token at <a href="https://cesium.com/ion/tokens" target="_blank">https://cesium.com/ion/tokens</a></p>`;
+        }
+    </script>
+</body>
+</html> 
