@@ -48,23 +48,12 @@ function updateDateTime() {
 
 // Initialize the application
 async function initializeApp() {
+    // Use a fallback if createWorldTerrainAsync is not available
+    let terrainProviderPromise = typeof Cesium.createWorldTerrainAsync === 'function' ? 
+        Cesium.createWorldTerrainAsync() : 
+        Promise.resolve(Cesium.createWorldTerrain());
+    
     try {
-        // First, test if Cesium is loaded properly
-        if (typeof Cesium === 'undefined') {
-            throw new Error('Cesium library not loaded');
-        }
-        
-        // Test token before proceeding
-        console.log('Testing Cesium token...');
-        if (!Cesium.Ion.defaultAccessToken) {
-            throw new Error('No Cesium Ion access token set');
-        }
-        
-        // Use a fallback if createWorldTerrainAsync is not available
-        let terrainProviderPromise = typeof Cesium.createWorldTerrainAsync === 'function' ? 
-            Cesium.createWorldTerrainAsync() : 
-            Promise.resolve(Cesium.createWorldTerrain());
-        
         const terrainProvider = await terrainProviderPromise;
         
         // Initialize the Cesium viewer
@@ -115,19 +104,9 @@ async function initializeApp() {
         
     } catch (error) {
         console.error('Error initializing application:', error);
-        
-        // Update status display
         document.getElementById('status-text').textContent = 'Error';
         document.querySelector('.status-icon').classList.remove('online');
         document.querySelector('.status-icon').classList.add('offline');
-        
-        // Show specific error message
-        const errorMessage = error.message || 'Unknown error';
-        if (errorMessage.includes('INVALID_TOKEN') || errorMessage.includes('Invalid access token')) {
-            alert('Cesium token error: ' + errorMessage + '\n\nPlease check your token at https://cesium.com/ion/tokens');
-        } else {
-            alert('Application error: ' + errorMessage);
-        }
     }
 }
 
@@ -663,129 +642,6 @@ function setCameraMode(mode) {
 // Return path waypoints for external use
 function getPathWaypoints() {
     return pathWaypoints;
-}
-
-// Export path data as GeoJSON
-function exportPathAsGeoJSON() {
-    if (pathWaypoints.length === 0) {
-        alert('No path data to export. Generate a path first.');
-        return null;
-    }
-    
-    // Convert cartographic coordinates to degrees
-    const coordinates = pathWaypoints.map(waypoint => [
-        Cesium.Math.toDegrees(waypoint.longitude),
-        Cesium.Math.toDegrees(waypoint.latitude),
-        waypoint.height || 0
-    ]);
-    
-    const geojson = {
-        type: "FeatureCollection",
-        features: [
-            {
-                type: "Feature",
-                properties: {
-                    name: missionName,
-                    waypointCount: pathWaypoints.length,
-                    pathLength: telemetryData.pathLength,
-                    estimatedTime: telemetryData.estTime,
-                    areaCoverage: telemetryData.areaCoverage,
-                    altitude: ui ? ui.getAltitude() : 100,
-                    lineSpacing: ui ? ui.getLineSpacing() : 50,
-                    followTerrain: ui ? ui.shouldFollowTerrain() : true,
-                    smoothPath: ui ? ui.shouldSmoothPath() : true,
-                    smoothingFactor: ui ? ui.getSmoothingFactor() : 5,
-                    exportDate: new Date().toISOString()
-                },
-                geometry: {
-                    type: "LineString",
-                    coordinates: coordinates
-                }
-            }
-        ]
-    };
-    
-    return geojson;
-}
-
-// Export path data as JSON
-function exportPathAsJSON() {
-    if (pathWaypoints.length === 0) {
-        alert('No path data to export. Generate a path first.');
-        return null;
-    }
-    
-    // Convert cartographic coordinates to degrees
-    const waypoints = pathWaypoints.map((waypoint, index) => ({
-        index: index,
-        longitude: Cesium.Math.toDegrees(waypoint.longitude),
-        latitude: Cesium.Math.toDegrees(waypoint.latitude),
-        altitude: waypoint.height || 0,
-        type: index === 0 ? 'start' : 
-              index === pathWaypoints.length - 1 ? 'end' : 'waypoint'
-    }));
-    
-    const jsonData = {
-        mission: {
-            name: missionName,
-            metadata: {
-                waypointCount: pathWaypoints.length,
-                pathLength: telemetryData.pathLength,
-                estimatedTime: telemetryData.estTime,
-                areaCoverage: telemetryData.areaCoverage,
-                exportDate: new Date().toISOString()
-            },
-            parameters: {
-                altitude: ui ? ui.getAltitude() : 100,
-                lineSpacing: ui ? ui.getLineSpacing() : 50,
-                followTerrain: ui ? ui.shouldFollowTerrain() : true,
-                smoothPath: ui ? ui.shouldSmoothPath() : true,
-                smoothingFactor: ui ? ui.getSmoothingFactor() : 5
-            },
-            waypoints: waypoints
-        }
-    };
-    
-    return jsonData;
-}
-
-// Download data as file
-function downloadData(data, filename, contentType) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: contentType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// Export functions for UI
-function exportPathAsGeoJSONFile() {
-    const geojson = exportPathAsGeoJSON();
-    if (geojson) {
-        const filename = `${missionName.replace(/[^a-z0-9]/gi, '_')}_path.geojson`;
-        downloadData(geojson, filename, 'application/geo+json');
-    }
-}
-
-function exportPathAsJSONFile() {
-    const jsonData = exportPathAsJSON();
-    if (jsonData) {
-        const filename = `${missionName.replace(/[^a-z0-9]/gi, '_')}_path.json`;
-        downloadData(jsonData, filename, 'application/json');
-    }
-}
-
-// Get path data for external use (returns both formats)
-function getPathData() {
-    return {
-        geojson: exportPathAsGeoJSON(),
-        json: exportPathAsJSON(),
-        raw: pathWaypoints
-    };
 }
 
 // Handle left sidebar interactions
